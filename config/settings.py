@@ -2,7 +2,10 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # OPENAI_API_KEY: str
+    OPENAI_API_KEY: str
+    DEFAULT_MODEL: str
+    MAX_TOKENS: int
+    DEFAULT_TEMPERATURE: float
     TELEGRAM_API_TOKEN: str
     # GOOGLE_CREDENTIALS_FILE: str
 
