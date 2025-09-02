@@ -1,20 +1,28 @@
-import requests
-from services.messenger.base import Messenger
+from .base import Messenger
+from typing import Any, Optional
+from telegram import Bot
+from telegram.constants import ParseMode
 
 
 class TelegramMessenger(Messenger):
-    BASE_URL = "https://api.telegram.org/bot{token}/"
 
     def __init__(self, token: str):
-        self.token = token
+        self.bot = Bot(token=token)
 
-    def send_message(self, chat_id: int, text: str) -> None:
-        url = self.BASE_URL.format(token=self.token) + "sendMessage"
-        payload = {chat_id: chat_id, "text": text}
-        response = requests.post(url, json=payload)
-        if not response.ok:
-            raise Exception(
-                f"Failed to send Telegram message: {response.text}")
+    async def send_message(self, chat_id: str, text: str, reply_markup: Optional[Any] = None) -> None:
+        print(f"Sending message to chat_id {chat_id}: {text}")
+        await self.bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=reply_markup,
+        )
 
     def receive_message(self, payload: dict) -> str:
-        return payload.get("message", {}).get("text", "")
+        if "message" in payload:
+            return payload["message"]["text"]
+
+        if "callback_query" in payload:
+            return payload["callback_query"]["data"]
+
+        return ""

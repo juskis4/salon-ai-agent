@@ -16,7 +16,8 @@ agent_service = AgentService(llm=llm)
 @app.post("/telegram/webhook")
 async def telegram_webhook(request: Request):
     payload = await request.json()
-    chat_id = str(payload["message"]["chat"]["id"])
+    chat_id = str(payload.get("message", payload.get(
+        "callback_query", {})).get("chat", {}).get("id"))
     incoming_text = messenger.receive_message(payload)
 
     print(f"Received message: {incoming_text} from chat_id: {chat_id}")
@@ -31,6 +32,6 @@ async def telegram_webhook(request: Request):
         }
     )
 
-    messenger.send_message(chat_id, reply)
+    await messenger.send_message(chat_id, reply)
 
     return {"ok": True}
