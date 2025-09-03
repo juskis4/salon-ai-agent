@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     MAX_TOKENS: int
     DEFAULT_TEMPERATURE: float
     TELEGRAM_API_TOKEN: str
-    # GOOGLE_CREDENTIALS_FILE: str
+    GOOGLE_SERVICE_ACCOUNT: str
+    GOOGLE_CALENDAR_ID: str
 
     class Config:
         env_file = ".env"
