@@ -1,8 +1,8 @@
+from .base import CalendarService
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from datetime import datetime
 from typing import Any, List, Dict
-from .base import CalendarService
 
 from datetime import datetime, timezone
 

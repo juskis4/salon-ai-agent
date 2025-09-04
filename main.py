@@ -4,14 +4,18 @@ from services.messenger.telegram import TelegramMessenger
 from services.llm.openai_llm import OpenAILLM
 from services.calendar.google_calendar import GoogleCalendarService
 from services.agent.agent_service import AgentService
+from services.notifier.twilio_notifier import TwilioNotifier
 
 app = FastAPI()
 
 # Dependencies
 messenger = TelegramMessenger(token=settings.TELEGRAM_API_TOKEN)
 llm = OpenAILLM(api_key=settings.OPENAI_API_KEY)
-calendar = GoogleCalendarService(
-    settings.GOOGLE_SERVICE_ACCOUNT, calendar_id=settings.GOOGLE_CALENDAR_ID)
+calendar = GoogleCalendarService(settings.GOOGLE_SERVICE_ACCOUNT,
+                                 settings.GOOGLE_CALENDAR_ID)
+notifier = TwilioNotifier(settings.TWILIO_ACCOUNT_SID,
+                          settings.TWILIO_AUTH_TOKEN,
+                          settings.TWILIO_PHONE_NUMBER)
 agent_service = AgentService(llm, calendar)
 
 
@@ -36,4 +40,10 @@ async def telegram_webhook(request: Request):
 
     await messenger.send_message(chat_id, reply)
 
+    await notifier.send_message(to="+370xxxxxxxx", message="A slot opened up tomorrow at 2PM. Reply YES to book.")
     return {"ok": True}
+
+
+@app.post("/twilio/webhook")
+async def twilio_webhook(request: Request):
+    return await notifier.handle_webhook(request)
