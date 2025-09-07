@@ -39,3 +39,30 @@ class OpenAILLM(LLM):
         )
 
         return response.choices[0].message.content or ""
+
+    async def generate_parse(
+        self,
+        user_input: str,
+        *,
+        system: Optional[str] = None,
+        options: Optional[dict[str, Any]] = None,
+        schema: Any = None
+    ) -> str:
+
+        messages = []
+
+        if options is None:
+            raise ValueError(
+                "LLM options missing")
+
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": user_input})
+
+        response = await self.client.beta.chat.completions.parse(
+            model=options["model"],
+            messages=messages,
+            response_format=schema,
+        )
+
+        return response.choices[0].message.parsed

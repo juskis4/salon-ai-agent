@@ -28,6 +28,14 @@ async def telegram_webhook(request: Request):
 
     print(f"Received message: {incoming_text} from chat_id: {chat_id}")
 
+    eventInfo = await agent_service.extract_event_info(
+        user_text=incoming_text,
+        options={
+            "model": settings.DEFAULT_MODEL
+        }
+    )
+    print(f"Event info: {eventInfo}")
+
     reply = await agent_service.handle_user_message(
         user_text=incoming_text,
         chat_id=chat_id,

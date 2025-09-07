@@ -2,6 +2,7 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 from services.llm.base import LLM
 from services.calendar.base import CalendarService
+from schemas.intents import IntentSchema
 
 
 class AgentService:
@@ -93,3 +94,20 @@ class AgentService:
             formatted.append(f"- {summary} at {start}")
 
         return "\n".join(formatted)
+
+    async def extract_event_info(self, user_text: str, options: Optional[dict] = None) -> IntentSchema:
+        print("Starting event extraction analysis")
+
+        today = datetime.now()
+        date_context = f"Today is {today.strftime('%A, %B %d, %Y')}."
+
+        response = await self.llm.generate_parse(
+            user_input=user_text,
+            system=f"{date_context} Analyze if the text describes a calendar event.",
+            options=options,
+            schema=IntentSchema
+        )
+
+        print(
+            f"Extraction complete - Is calendar event: {response.is_calendar_event}, Confidence: {response.confidence_score:.2f}")
+        return response
