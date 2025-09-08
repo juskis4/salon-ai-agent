@@ -1,10 +1,11 @@
 from pydantic import BaseModel, Field
+from typing import Literal
 
 
 class IntentSchema(BaseModel):
-    description: str = Field(
+    request_type: Literal["calendar_lookup", "other"] = Field(
         description="Raw description of the the request")
-    is_calendar_event: bool = Field(
-        description="Whether this text describes a calendar event or events")
     confidence_score: float = Field(
         description="Confidence score between 0 and 1")
+    description: str = Field(
+        description="Cleaned description of the request")

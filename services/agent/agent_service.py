@@ -1,8 +1,9 @@
 from typing import Optional
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from services.llm.base import LLM
 from services.calendar.base import CalendarService
 from schemas.intents import IntentSchema
+from schemas.calendar import ScheduleResponseSchema
 
 
 class AgentService:
@@ -10,104 +11,64 @@ class AgentService:
         self.llm = llm
         self.calendar = calendar
 
-    async def handle_user_message(self, user_text: str, chat_id: str,
+    async def handle_user_message(self, user_text: str,
                                   options: Optional[dict] = None,) -> None:
 
-        intent = await self._analyze_intent(user_text, options)
-
-        if intent["intent"] == "calendar_lookup":
-            print(f"Intent detected: calendar lookup {chat_id}")
-            start, end = self._resolve_date_range(intent["date_range"])
-            events = self.calendar.list_events(start, end)
-            events_summary = self._format_events(events)
-
-            print(f"sending events_summary: {events_summary}")
-            reply = await self.llm.generate(
-                prompt=f"""
-                User message: {user_text}
-
-                Here are the relevant calendar events ({start.date()} to {end.date()}):
-                {events_summary}
-
-                Based on these events, respond helpfully to the user.
-                """,
-                system="You are a helpful scheduling assistant.",
-                options=options
-            )
-        else:
-            print("Intent detected: general")
-            reply = await self.llm.generate(
-                prompt=user_text,
-                system="You are a helpful scheduling assistant.",
-                options=options
-            )
-
-        return reply
-
-    async def _analyze_intent(self, text: str, options: Optional[dict] = None) -> dict:
-        response = await self.llm.generate(
-            prompt=f"""
-            Classify the user's request into a structured JSON object.
-
-            User message: "{text}"
-
-            Respond ONLY with valid JSON like:
-            {{
-              "intent": "calendar_lookup" | "general",
-              "date_range": "tomorrow" | "next_week" | "last_week" | "unspecified"
-            }}
-            """,
-            system="You are a classifier. Only output strict JSON.",
+        eventInfo = await self.extract_event_info(
+            user_text=user_text,
             options=options
         )
+        print(f"Event info: {eventInfo}")
 
-        import json
-        try:
-            return json.loads(response)
-        except json.JSONDecodeError:
-            return {"intent": "general", "date_range": "unspecified"}
+        if eventInfo.confidence_score < 0.7:
+            print(f"Low confidence score: {eventInfo.confidence_score}")
+            return None
 
-    def _resolve_date_range(self, label: str) -> tuple[datetime, datetime]:
-        now = datetime.now(timezone.utc)
-        if label == "tomorrow":
-            start = now + timedelta(days=1)
-            end = start + timedelta(days=1)
-        elif label == "next_week":
-            start = now
-            end = now + timedelta(days=7)
-        elif label == "last_week":
-            start = now - timedelta(days=7)
-            end = now
+        if eventInfo.request_type == "calendar_lookup":
+            return await self.handle_calendar_lookup(eventInfo.description, options)
         else:
-            start = now - timedelta(days=30)
-            end = now + timedelta(days=30)
-        return start, end
-
-    def _format_events(self, events: list[dict]) -> str:
-        if not events:
-            return "No events found."
-
-        formatted = []
-        for event in events:
-            start = event["start"].get("dateTime", event["start"].get("date"))
-            summary = event.get("summary", "No title")
-            formatted.append(f"- {summary} at {start}")
-
-        return "\n".join(formatted)
+            print("Request type not supported")
+            return None
 
     async def extract_event_info(self, user_text: str, options: Optional[dict] = None) -> IntentSchema:
         print("Starting event extraction analysis")
 
-        today = datetime.now()
-        date_context = f"Today is {today.strftime('%A, %B %d, %Y')}."
-
         response = await self.llm.generate_parse(
             user_input=user_text,
-            system=f"{date_context} Analyze if the text describes a calendar event.",
+            system="Analyze if the text describes a calendar lookup.",
             options=options,
             schema=IntentSchema
         )
 
         print(
-            f"Extraction complete - Is calendar event: {response.is_calendar_event}, Confidence: {response.confidence_score:.2f}")
+            f"Extraction complete - Request type: {response.request_type}, Confidence: {response.confidence_score:.2f}")
         return response
+
+    async def handle_calendar_lookup(self, description: str, options: Optional[dict] = None) -> str:
+        print("Processing calendar lookup request")
+
+        today = datetime.now()
+        date_context = f"Today is {today.strftime('%A, %B %d, %Y')}."
+
+        response = await self.llm.generate_parse(
+            user_input=description,
+            system=f"{date_context} Extract the date range and lookup the user's calendar events for that range. Returns days with appointments only.",
+            options=options,
+            schema=ScheduleResponseSchema
+        )
+        print(
+            f"calendar lookup complete: {response.days} days")
+        return self.format_schedule(response)
+
+    def format_schedule(self, schedule: ScheduleResponseSchema) -> str:
+        lines = []
+        for day in schedule.days:
+            lines.append(f"- {day.date}")
+            if not day.appointments:
+                lines.append("  (No appointments)")
+            else:
+                for appt in day.appointments:
+                    lines.append(
+                        f"  - {appt.time}: {appt.client} - {appt.service}")
+            lines.append("")  # blank line between days
+        return "\n".join(lines).strip()
