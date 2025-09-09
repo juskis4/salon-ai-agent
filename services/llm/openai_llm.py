@@ -52,8 +52,7 @@ class OpenAILLM(LLM):
         messages = []
 
         if options is None:
-            raise ValueError(
-                "LLM options missing")
+            raise ValueError("LLM options missing")
 
         if system:
             messages.append({"role": "system", "content": system})

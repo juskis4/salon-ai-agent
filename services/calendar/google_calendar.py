@@ -13,7 +13,6 @@ class GoogleCalendarService(CalendarService):
             credentials_file,
             scopes=["https://www.googleapis.com/auth/calendar.readonly"]
         )
-        print(creds)
         self.service = build("calendar", "v3", credentials=creds)
         self.calendar_id = calendar_id
 

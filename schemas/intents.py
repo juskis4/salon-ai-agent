@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal, Optional
+from datetime import datetime
 
 
 class IntentSchema(BaseModel):
@@ -9,3 +10,9 @@ class IntentSchema(BaseModel):
         description="Confidence score between 0 and 1")
     description: str = Field(
         description="Cleaned description of the request")
+    date_start: Optional[datetime] = Field(
+        default=None,
+        description="Start date and time for the request")
+    date_end: Optional[datetime] = Field(
+        default=None,
+        description="End date and time for the request")
